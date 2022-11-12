@@ -7,6 +7,7 @@ import software.amazon.awssdk.enhanced.dynamodb.DynamoDbTable;
 import software.amazon.awssdk.enhanced.dynamodb.Key;
 import software.amazon.awssdk.enhanced.dynamodb.TableSchema;
 import software.amazon.awssdk.enhanced.dynamodb.model.GetItemEnhancedRequest;
+import software.amazon.awssdk.enhanced.dynamodb.model.QueryConditional;
 import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.dynamodb.DynamoDbClient;
 import software.amazon.awssdk.services.dynamodb.model.DynamoDbException;
@@ -35,9 +36,10 @@ public class DynamodbEnhancedClientCRUD {
         if(tableExist == 0)
             createTable(client);
         addRecord(client);
-        getRecord(client);
-        updateRecord(client, "id101");
-        deleteRecord(client, "id101");
+//        getRecord(client, "id101", "Westlife");
+        queryRecord(client, "id103");
+//        updateRecord(client, "id101");
+//        deleteRecord(client, "id101");
     }
 
     private static DynamoDbTable<MusicBean> createTable(DynamoDbEnhancedClient client) {
@@ -60,8 +62,8 @@ public class DynamodbEnhancedClientCRUD {
             // Populate the Table.
             musicRecord = new MusicBean();
             musicRecord.setArtist("Westlife");
-            musicRecord.setAlbumID("id103");
-            musicRecord.setAlbum("Face to Face");
+            musicRecord.setAlbumID("id104");
+            musicRecord.setAlbum("Turnaround");
 
             // Insert record into an Amazon DynamoDB table.
             musicTable.putItem(musicRecord);
@@ -73,13 +75,14 @@ public class DynamodbEnhancedClientCRUD {
         System.out.println("Customer data added to the table with id " + musicRecord.getAlbumID());
     }
 
-    public static String getRecord(DynamoDbEnhancedClient enhancedClient) {
+    public static String getRecord(DynamoDbEnhancedClient enhancedClient, String keyVal, String sortVal) {
         MusicBean result = null;
 
         try {
             DynamoDbTable<MusicBean> musicTable = enhancedClient.table(tblName, TableSchema.fromBean(MusicBean.class));
             Key key = Key.builder()
-                    .partitionValue("id104")
+                    .partitionValue(keyVal)
+                    .sortValue(sortVal) // If DynamoDbSortKey is defined in Bean, then this step is mandatory
                     .build();
 
             // Get the item by using the key.
@@ -125,6 +128,24 @@ public class DynamodbEnhancedClientCRUD {
             MusicBean item = musicTable.getItem(record -> record.key(key));
             musicTable.deleteItem(item);
             return item.getAlbum();
+
+        } catch (DynamoDbException e) {
+            System.err.println(e.getMessage());
+            System.exit(1);
+        }
+        return "";
+    }
+
+    public static String queryRecord(DynamoDbEnhancedClient enhancedClient, String recordId) {
+        try{
+            DynamoDbTable<MusicBean> mappedTable = enhancedClient.table(tblName, TableSchema.fromBean(MusicBean.class));
+            QueryConditional queryConditional = QueryConditional.keyEqualTo(Key.builder()
+                    .partitionValue(recordId)
+                    .build());
+
+            mappedTable.query(queryConditional)
+                    .items().stream()
+                    .findAny().ifPresent(bean -> System.out.println("QueryRecord - AlbumID: " + bean.getAlbum()));
 
         } catch (DynamoDbException e) {
             System.err.println(e.getMessage());

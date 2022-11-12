@@ -2,6 +2,7 @@ package io.mad.ddb;
 
 import software.amazon.awssdk.enhanced.dynamodb.mapper.annotations.DynamoDbBean;
 import software.amazon.awssdk.enhanced.dynamodb.mapper.annotations.DynamoDbPartitionKey;
+import software.amazon.awssdk.enhanced.dynamodb.mapper.annotations.DynamoDbSortKey;
 
 @DynamoDbBean
 public class MusicBean {
@@ -14,7 +15,7 @@ public class MusicBean {
 
     public void setAlbumID(String albumID) { this.albumID = albumID; }
 
-
+    @DynamoDbSortKey
     public String getAlbum() { return album; }
     public void setAlbum(String album) { this.album = album; }
 
