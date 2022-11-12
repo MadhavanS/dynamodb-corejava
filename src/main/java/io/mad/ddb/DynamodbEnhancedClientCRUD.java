@@ -4,7 +4,9 @@ import software.amazon.awssdk.auth.credentials.AwsBasicCredentials;
 import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider;
 import software.amazon.awssdk.enhanced.dynamodb.DynamoDbEnhancedClient;
 import software.amazon.awssdk.enhanced.dynamodb.DynamoDbTable;
+import software.amazon.awssdk.enhanced.dynamodb.Key;
 import software.amazon.awssdk.enhanced.dynamodb.TableSchema;
+import software.amazon.awssdk.enhanced.dynamodb.model.GetItemEnhancedRequest;
 import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.dynamodb.DynamoDbClient;
 import software.amazon.awssdk.services.dynamodb.model.DynamoDbException;
@@ -32,22 +34,25 @@ public class DynamodbEnhancedClientCRUD {
 
         if(tableExist == 0)
             createTable(client);
-        putRecord(client);
+        addRecord(client);
+        getRecord(client);
+        updateRecord(client, "id101");
+        deleteRecord(client, "id101");
     }
 
     private static DynamoDbTable<MusicBean> createTable(DynamoDbEnhancedClient client) {
-        DynamoDbTable<MusicBean> customerTable = client.table(tblName, TableSchema.fromBean(MusicBean.class));
+        DynamoDbTable<MusicBean> musicTable = client.table(tblName, TableSchema.fromBean(MusicBean.class));
         // Create the table
-        customerTable.createTable(builder -> builder
+        musicTable.createTable(builder -> builder
                 .provisionedThroughput(b -> b
                         .readCapacityUnits(10L)
                         .writeCapacityUnits(10L)
                         .build())
         );
-        return customerTable;
+        return musicTable;
     }
 
-    public static void putRecord(DynamoDbEnhancedClient enhancedClient) {
+    public static void addRecord(DynamoDbEnhancedClient enhancedClient) {
         MusicBean musicRecord = null;
         try {
             DynamoDbTable<MusicBean> musicTable = enhancedClient.table(tblName, TableSchema.fromBean(MusicBean.class));
@@ -55,10 +60,10 @@ public class DynamodbEnhancedClientCRUD {
             // Populate the Table.
             musicRecord = new MusicBean();
             musicRecord.setArtist("Westlife");
-            musicRecord.setAlbumID("id104");
-            musicRecord.setAlbum("Coast to Coast");
+            musicRecord.setAlbumID("id103");
+            musicRecord.setAlbum("Face to Face");
 
-            // Put the customer data into an Amazon DynamoDB table.
+            // Insert record into an Amazon DynamoDB table.
             musicTable.putItem(musicRecord);
 
         } catch (DynamoDbException e) {
@@ -66,5 +71,65 @@ public class DynamodbEnhancedClientCRUD {
             System.exit(1);
         }
         System.out.println("Customer data added to the table with id " + musicRecord.getAlbumID());
+    }
+
+    public static String getRecord(DynamoDbEnhancedClient enhancedClient) {
+        MusicBean result = null;
+
+        try {
+            DynamoDbTable<MusicBean> musicTable = enhancedClient.table(tblName, TableSchema.fromBean(MusicBean.class));
+            Key key = Key.builder()
+                    .partitionValue("id104")
+                    .build();
+
+            // Get the item by using the key.
+            result = musicTable.getItem(
+                    (GetItemEnhancedRequest.Builder requestBuilder) -> requestBuilder.key(key));
+            System.out.println("******* The Album name is " + result.getAlbum());
+
+        } catch (DynamoDbException e) {
+            System.err.println(e.getMessage());
+            System.exit(1);
+        }
+        return result.getAlbumID();
+    }
+
+    public static String updateRecord(DynamoDbEnhancedClient enhancedClient, String keyVal) {
+        try {
+            DynamoDbTable<MusicBean> musicTable = enhancedClient.table(tblName, TableSchema.fromBean(MusicBean.class));
+            Key key = Key.builder()
+                    .partitionValue(keyVal)
+                    .build();
+
+            // Get the item by using the key and update.
+            MusicBean item = musicTable.getItem(record -> record.key(key));
+            item.setAlbum("Westlife");
+            musicTable.updateItem(item);
+            return item.getAlbum();
+
+        } catch (DynamoDbException e) {
+            System.err.println(e.getMessage());
+            System.exit(1);
+        }
+        return "";
+    }
+
+    public static String deleteRecord(DynamoDbEnhancedClient enhancedClient, String keyVal) {
+        try {
+            DynamoDbTable<MusicBean> musicTable = enhancedClient.table(tblName, TableSchema.fromBean(MusicBean.class));
+            Key key = Key.builder()
+                    .partitionValue(keyVal)
+                    .build();
+
+            // Get the item by using the key and update the email value.
+            MusicBean item = musicTable.getItem(record -> record.key(key));
+            musicTable.deleteItem(item);
+            return item.getAlbum();
+
+        } catch (DynamoDbException e) {
+            System.err.println(e.getMessage());
+            System.exit(1);
+        }
+        return "";
     }
 }
